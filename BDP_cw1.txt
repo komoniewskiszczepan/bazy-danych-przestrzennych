@@ -1,0 +1,160 @@
+1. create database s289818 ( -> \c s289818 w celu 'przejœcia' do niej)
+
+2. create schema firma
+
+3. create role ksiegowosc;
+   grant select on all tables in schema firma to ksiegowosc;
+
+4.
+a) create table pracownicy(id_pracownika int not null, imie varchar not null, nazwisko varchar not null, adres varchar, telefon int);
+   create table godziny(id_godziny int not null, data date not null, liczba_godzin int, id_pracownika int not null);
+   create table pensja_stanowisko(id_pensji int not null, stanowisko varchar not null, kwota float);
+   create table premia(id_premi int not null, rodzaj varchar, kwota float);
+   create table wynagrodzenie(id_wynagrodzenia int not null, data date, id_pracownika int not null, id_godziny int not null, id_pensji int not null, id_premii int);
+
+b) alter table pracownicy add primary key (id_pracownika);
+   alter table godziny add primary key (id_godziny);
+   alter table pensja_stanowisko add primary key (id_pensji);
+   alter table premia add primary key (id_premi);
+   alter table wynagrodzenie add primary key (id_wynagrodzenia);
+
+c) alter table godziny add foreign key (id_pracownika) references pracownicy(id_pracownika);
+   alter table wynagrodzenie
+	add foreign key(id_pracownika) references pracownicy(id_pracownika),
+	add foreign key(id_godziny) references godziny(id_godziny),
+	add foreign key(id_pensji) references pensja_stanowisko(id_pensji),
+	add foreign key(id_premii) references premia(id_premi);
+
+d) create index idx_pracownik on pracownicy (id_pracownika);
+   create index idx_godziny on godziny (id_godziny);
+   create index idx_wynagrodzenia on wynagrodzenie(id_wynagrodzenia);
+
+e) comment on table pracownicy is 'tabela pracownikow';
+   comment on table godziny is 'tabela godzin';
+   comment on table pensja_stanowisko is 'tabela pensji';
+   comment on table premia is 'tabela premii';
+   comment on table wynagrodzenie is 'tabela wynagrodzen';
+
+f) alter table pracownicy DISABLE TRIGGER ALL;
+   alter table godziny DISABLE TRIGGER ALL;
+   alter table wynagrodzenie DISABLE TRIGGER ALL;
+   alter table pensja_stanowisko DISABLE TRIGGER ALL;
+   alter table premia DISABLE TRIGGER ALL;
+
+5. (inserty na samym dole pliku)
+
+a) alter table godziny
+	add column miesiac date not null,
+	add column tydzien date not null;
+
+b) alter table wynagrodzenie alter column data type varchar;
+
+
+c) update premia set kwota = 0 where rodzaj is null or rodzaj like 'brak';
+
+
+6. (trzeba by³o min. 10 wpisów do ka¿dej tabeli, i nie uda³o siê nabiæ 160 godzin, dlatego 6f i 6h by³y testowane dla mniejszych wartoœci)
+a) select id_pracownika, nazwisko from pracownicy;
+b) elect id_pracownika from wynagrodzenie inner join pensja_stanowisko on  wynagrodzenie.id_pensji = pensja_stanowisko.id_pensji where pensja_stanowisko.kwota > 1000;
+c) select id_pracownika from wynagrodzenie inner join pensja_stanowisko on  wynagrodzenie.id_pensji = pensja_stanowisko.id_pensji inner join premia on wynagrodzenie.id_premii = premia.id_premi where pensja_stanowisko.kwota > 2000 and premia.rodzaj = 'brak';
+d) select * from pracownicy where imie like 'J%';
+e) select * from pracownicy where imie like '%n%' and imie like '%a';
+f) select imie, nazwisko, miesiac, (sum(liczba_godzin)-160) as nadgodziny from godziny join pracownicy on godziny.id_pracownika=pracownicy.id_pracownika group by imie, nazwisko, miesiac, liczba_godzin having (godziny.liczba_godzin-160)  > 0 order by imie, nazwisko, miesiac;
+g) elect imie, nazwisko from wynagrodzenie inner join pensja_stanowisko on wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji inner join pracownicy on pracownicy.id_pracownika = wynagrodzenie.id_pracownika where pensja_stanowisko.kwota between 1500 and 3000;
+h) select imie, nazwisko, miesiac, sum(liczba_godzin) from pracownicy inner join wynagrodzenie on wynagrodzenie.id_pracownika=pracownicy.id_pracownika inner join godziny on godziny.id_godziny=wynagrodzenie.id_godziny inner join premia on premia.id_premi = wynagrodzenie.id_premii group by imie, nazwisko, miesiac, premia.kwota having sum(liczba_godzin) > 160 and premia.kwota = 0 order by imie, nazwisko, miesiac;
+
+7.
+a) select imie, nazwisko, kwota from pracownicy inner join wynagrodzenie on pracownicy.id_pracownika = wynagrodzenie.id_pracownika inner join pensja_stanowisko on pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji order by kwota desc;
+b) select imie, nazwisko from pracownicy, wynagrodzenie, pensja_stanowisko, premia where wynagrodzenie.id_pracownika=pracownicy.id_pracownika and wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji and wynagrodzenie.id_premii=premia.id_premi order by pensja_stanowisko.kwota+ premia.kwota desc;
+c) select stanowisko, count(stanowisko) from pensja_stanowisko group by stanowisko;
+d) select avg(pensja_stanowisko.kwota), min(pensja_stanowisko.kwota),max(pensja_stanowisko.kwota) from pensja_stanowisko join wynagrodzenie on wynagrodzenie.id_pensji = pensja_stanowisko.id_pensji join pracownicy on pracownicy.id_pracownika = wynagrodzenie.id_pracownika where stanowisko like 'bankier';
+e) select sum(kwota) from pracownicy join wynagrodzenie on wynagrodzenie.id_pracownika = pracownicy.id_pracownika join pensja_stanowisko on pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji;
+f) select stanowisko, sum(kwota) from pracownicy join wynagrodzenie on wynagrodzenie.id_pracownika = pracownicy.id_pracownika join pensja_stanowisko on pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji group by  stanowisko;
+g) select stanowisko, count(pracownicy.id_pracownika) from pracownicy join wynagrodzenie on wynagrodzenie.id_pracownika = pracownicy.id_pracownika join pensja_stanowisko on pensja_stanowisko.id_pensji = wynagrodzenie.id_pensji join premia on premia.id_premi = wynagrodzenie.id_premii WHERE premia.kwota != 0 group by stanowisko;
+h) delete from pracownicy where id_pracownika in (select pracownicy.id_pracownika from pracownicy, wynagrodzenie, pensja_stanowisko where wynagrodzenie.id_pracownika=pracownicy.id_pracownika and wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji and pensja_stanowisko.kwota < 1200);
+   
+8.
+a) alter table pracownicy alter column telefon type varchar;
+   update pracownicy set telefon = concat('(+48)',telefon);
+
+b) update pracownicy set telefon = concat(left(telefon, 5), ' ', substrong(telefon, 6, 3), '-', substring(telefon, 9, 3), '-', right(telefon, 3));
+c) select upper(imie), upper(nazwisko), upper(adres) from pracownicy where length(nazwisko) = (select max(length(nazwisko)) from pracownicy);
+d) select md5(imie||nazwisko||adres||telefon) from pracownicy, pensja_stanowisko, wynagrodzenie where wynagrodzenie.id_pracownika=pracownicy.id_pracownika and wynagrodzenie.id_pensji=pensja_stanowisko.id_pensji group by pracownicy.id_pracownika, pensja_stanowisko.kwota;
+
+
+9.
+select concat('Pracownik ', imie, ' ', nazwisko, ', w dniu ', godziny.data, ' otrzymal pensje calkowita na kwote ', (pensja_stanowisko.kwota + premia.kwota), ', gdzie wynagrodzenie zasadnicze wynosilo: ', pensja_stanowisko.kwota, ', premia:', premia.kwota, ', nadgodziny: ', (case when godziny.liczba_godzin < 160 then 0 else (godziny.liczba_godzin-160) end)) from pracownicy JOIN wynagrodzenie on wynagrodzenie.id_pracownika = pracownicy.id_pracownika join godziny on godziny.id_godziny = wynagrodzenie.id_godziny join pensja_stanowisko on wynagrodzenie.id_pensji = pensja_stanowisko.id_pensji join premia on premia.id_premi = wynagrodzenie.id_premii;
+
+
+
+
+//pracownicy
+insert into pracownicy values(1, 'Henryk', 'Kwinto', 'Vabank 1', '111111111');
+insert into pracownicy values(2, 'Gustaw', 'Kramer', 'Vabank 2', '222222222');
+insert into pracownicy values(2, 'Gustaw', 'Kramer', 'Vabank 2', '222222222');
+insert into pracownicy values(5, 'Wieslaw', 'Wojnar','Weselna 2', '555555555');
+insert into pracownicy values(6, 'Aleksander', 'Zwirski','', '666666666');
+insert into pracownicy values(7, 'Roza', 'Mazurek','Rozana 12', '777777777');
+insert into pracownicy values(8, 'Slawomir', 'Desperski','Pieska 88', '888888888');
+insert into pracownicy values(9, 'Maryna', 'Janosikowa','Gorlaska 15', '999999999');
+insert into pracownicy values(0, 'Marusia', 'Kos','Czolgowa 102', '000000000');
+
+//godziny
+insert into godziny values(1,'2020-01-01',5,1,'1997-01-01','2019-12-30');
+insert into godziny values(2,'2020-01-01',1,2,'1997-01-01','2019-12-30');
+insert into godziny values(0,'2020-02-02',8,0,'1997-02-02','2020-01-27');
+insert into godziny values(10,'2020-02-03',8,0,'1997-02-02','2020-01-27');
+insert into godziny values(3,'2020-04-04',12,7,'1997-04-04','2020-03-30');
+insert into godziny values(4,'2020-04-04',10,6,'1997-04-04','2020-03-30');
+insert into godziny values(5,'2020-04-13',24,5,'1997-04-13','2020-04-13');
+insert into godziny values(6,'2020-04-13',18,6,'1997-04-13','2020-04-13');
+insert into godziny values(7,'2020-09-10',13,7,'1997-09-10','2020-09-10');
+insert into godziny values(8,'2020-09-10',16,8,'1997-09-10','2020-09-10');
+insert into godziny values(9,'2020-09-17',14,9,'1997-09-17','2020-09-17');
+insert into godziny values(11,'2020-09-20',14,9,'1997-09-20','2020-09-17');
+insert into godziny values(12,'2020-09-15',16,8,'1997-09-15','2020-09-10');
+
+//pensja
+insert into pensja_stanowisko values(1, 'kasiarz', 20000);
+insert into pensja_stanowisko values(2, 'bankier', 100000);
+insert into pensja_stanowisko values(3, 'starzysta', 1500);
+insert into pensja_stanowisko values(4, 'praktykant', 800);
+insert into pensja_stanowisko values(5, 'sprzatanie', 2000);
+insert into pensja_stanowisko values(6, 'sprzatanie', 2000);
+insert into pensja_stanowisko values(7, 'marketing', 5000);
+insert into pensja_stanowisko values(8, 'kuchnia', 3500);
+insert into pensja_stanowisko values(9, 'prezes', 100001);
+insert into pensja_stanowisko values(9, 'vice prezes', 99999);
+insert into pensja_stanowisko values(0, 'vice prezes', 99999);
+
+//premia
+insert into premia values(1);
+insert into premia(2,'dobre zachowanie w pracy', 1);
+insert into premia values(2,'dobre zachowanie w pracy', 1);
+insert into premia values(3,'szybka kawa', 10);
+insert into premia values(4,'punktualnosc', 20);
+insert into premia values(5,'wyprasowana koszula zawsze', 20);
+insert into premia values(6,'przedterminowe wykonanie projektu', 300);
+insert into premia values(7,'interakcja z klientem', 400);
+insert into premia values(7,'korepetycje spoleczne', 150);
+insert into premia values(8,'korepetycje spoleczne', 150);
+insert into premia values(9,'bycie milym', 7);
+insert into premia values(10,'podlewanie kwiatkow', 12);
+
+//wynagrodzenie
+insert into wynagrodzenie values(1,'2020-12-31',1,1,1,1);
+insert into wynagrodzenie values(2,'2020-12-31',2,2,2,2);
+insert into wynagrodzenie values(3,'2020-12-31',3,3,3,3);
+insert into wynagrodzenie values(4,'2020-12-31',4,4,4,4);
+insert into wynagrodzenie values(5,'2020-12-31',5,5,5,5);
+insert into wynagrodzenie values(6,'2020-12-31',6,6,6,6);
+insert into wynagrodzenie values(7,'2020-12-31',7,7,7,7);
+insert into wynagrodzenie values(8,'2020-12-31',8,8,8,8);
+insert into wynagrodzenie values(9,'2020-12-31',9,9,9,9);
+insert into wynagrodzenie values(0,'2020-12-31',0,0,0,0);
+
+
+
+
+
+
