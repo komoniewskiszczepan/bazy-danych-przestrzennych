@@ -1,0 +1,196 @@
+\i path_to_sklep.sql
+
+set search_path to sklep;
+
+6.
+INSERT INTO producenci (nazwa_producenta, mail, telefon)
+values('abc','1@email.com','123456789'),
+('cde','2@email.com','111111111'),
+('efg','3@gmail.com','333333333'),
+('xyz','4@gmail.com','444444444'),
+('505','5@gmail.com','555555555'),
+('KIK','6@gmail.com','666666666'),
+('fff','7@gmail.com','777777777'),
+('sos','8@gmail.com','888888888'),
+('elo','9@gmail.com','999999999'),
+('zer','0@gmail.com','000000000');
+
+insert into produkty(nazwa_produktu,cena,id_producenta)
+values('baterie',2.5,1),
+('dlugopis',1.5,2),
+('papier',10,3),
+('zeszyt',3.5,4),
+('plecak',55,5),
+('tasma',4,6),
+('piornik',12,7),
+('olowek',1,8),
+('kredki',7,9),
+('pastele',15,1),
+('linijka',2.5,1),
+('ekierka',2.5,2),
+('cyrkiel',5,3),
+('pineski',8,3),
+('pioro',10,4);
+
+insert into zamowienia(data,id_producenta,id_produktu,ilosc)
+values('2020-01-01',1,1,10),
+('2020-01-01',1,11,20),
+('2020-01-13',1,10,100),
+('2020-01-13',1,1,12),
+('2020-01-04',1,10,40),
+('2020-01-09',2,2,70),
+('2020-01-09',2,12,70),
+('2020-01-11',2,2,35),
+('2020-01-12',3,3,50),
+('2020-01-13',3,13,40),
+('2020-01-14',3,14,65),
+('2020-01-14',2,13,80),
+('2020-01-14',4,4,100),
+('2020-01-14',5,5,100),
+('2020-01-29',5,5,150),
+('2020-01-16',4,15,90),
+('2020-01-16',6,6,30),
+('2020-01-16',7,7,50),
+('2020-01-14',7,7,100),
+('2020-01-29',8,8,158),
+('2020-01-20',9,9,99),
+('2020-01-18',2,12,30),
+('2020-01-30',3,14,50);
+
+7. su -postgres
+   pg_dump s289818 > s289818.copy
+ 
+8. dropdb s289818
+ 
+9. createdb backup289818
+   psql backup289818 < s2898818.copy
+
+10. alter database "backup289818" rename to "s289818";
+   
+11.
+a) select concat('Producent: ', nazwa_producenta, ', liczba zamowien: ', sum(ilosc), ', wartosc zamowienia: ', sum(ilosc*cena)) from zamowienia right join produkty on zamowienia.id_produktu = produkty.id_produktu right join producenci on producenci.id_producenta = zamowienia.id_producenta group by producenci.id_producenta;
+b) select concat('Produkt: ',nazwa_produktu, ', liczba zmowien: ', count(id_zamowienia)) from zamowienia right join produkty on zamowienia.id_produktu = produkty.id_produktu group by nazwa_produktu;
+c) select * from produkty natural join zamowienia;
+d) --
+e) select * from zamowienia where date_part('month',data) = 01;
+f) select count(id_zamowienia), date_part('dow', data) as dzien_tygodnia from zamowienia group by dzien_tygodnia order by count(id_zamowienia) desc;
+g) select nazwa_produktu, count(id_zamowienia) as liczba_zamowien from zamowienia inner join produkty on zamowienia.id_produktu = produkty.id_produktu group by produkty.id_produktu order by count(id_zamowienia) desc;
+
+12.
+a) select concat('Produkt ', upper(nazwa_produktu), ', ktorego producentem jest ', lower(nazwa_producenta), ',zamowiono ', count(id_zamowienia), ' razy') as opis from zamowienia inner join produkty on zamowienia.id_produktu = produkty.id_produktu join producenci on zamowienia.id_produktu = producenci.id_producenta group by nazwa_produktu, nazwa_producenta order by count(id_zamowienia) desc;
+b) select nazwa_produktu, sum(ilosc*cena) as ilosc from zamowienia
+ inner join produkty on produkty.id_produktu=zamowienia.id_produktu
+ inner join producenci on producenci.id_producenta=zamowienia.id_producenta
+ group by nazwa_produktu order by sum(ilosc*cena) offset 3;
+c) create table sklep.klienci (id_klienta serial, email varchar not null, telefon varchar not null);
+d) alter table klienci add primary key (id_klienta);
+   alter table zamowienia add column id_klienta int references klienci(id_klienta);
+   insert into klienci(email,telefon)
+	values('k1@email.com','123123123'),
+	('k2@email.com','123412341'),
+	('k3@email.com','789789789'),
+	('k4@email.com','123456789'),
+	('k5@email.com','666333666');
+	
+   update zamowienia set id_klienta = 1 where id_zamowienia in (1,2,3,4,5);
+   update zamowienia set id_klienta = 2 where id_zamowienia in (6,7,8,9,10);
+   update zamowienia set id_klienta = 3 where id_zamowienia in (11,12,13,14);
+   update zamowienia set id_klienta = 4 where id_zamowienia in (15,16);
+   update zamowienia set id_klienta = 5 where id_zamowienia in (17,18,19,20,21,22,23,24);
+
+   
+e) select zamowienia.id_klienta, nazwa_produktu, ilosc, sum(ilosc*cena) as wartosc_zamowienia from zamowienia
+ inner join produkty on produkty.id_produktu=zamowienia.id_produktu                                                                  
+ inner join producenci on producenci.id_producenta=zamowienia.id_producenta                                                          
+ inner join klienci on klienci.id_klienta=zamowienia.id_klienta                                                                      
+ group by zamowienia.id_klienta, nazwa_produktu, ilosc;
+
+f) (select concat('NAJCZESCIEJ ZAMAWIAJACY: id: ', zamowienia.id_klienta, ' email: ', klienci.email, ' telefon: ', klienci.telefon) as "klient",                                              
+sum(ilosc*cena) as "wartosc calkowita zamowien"
+from sklep.zamowienia 
+join klienci on klienci.id_klienta = zamowienia.id_klienta
+join produkty on produkty.id_produktu = zamowienia.id_produktu 
+group by zamowienia.id_klienta, klienci.id_klienta
+order by count(id_zamowienia) 
+DESC LIMIT 1)
+union
+(select concat('NAJRZADZIEJ ZAMAWIAJACY id: ', zamowienia.id_klienta, ' email: ', klienci.email, ' telefon: ', klienci.telefon) as "klient",
+sum(ilosc*cena) as "Wartosc calkowita zamowien"
+from zamowienia 
+join klienci on klienci.id_klienta = zamowienia.id_klienta
+join sklep.produkty on produkty.id_produktu = zamowienia.id_produktu 
+group by zamowienia.id_klienta, klienci.id_klienta
+order by count(id_zamowienia) 
+ASC LIMIT 1);
+
+g) delete from produkty where id_produktu in (select id_produktu from produkty where id_produktu not in (select id_produktu from zamowienia));
+
+13.
+a) create table sklep.numer(liczba int check(liczba between 0 and 9999));
+b) create sequence liczba_seq
+ 	increment 5
+ 	minvalue 0
+ 	maxvalue 125
+ 	start 100
+ 	cycle
+ 	owned by numer.liczba;
+
+c) insert into numer(liczba)
+values( nextval('liczba_seq')),
+( nextval('liczba_seq')),
+( nextval('liczba_seq')),
+( nextval('liczba_seq')),
+( nextval('liczba_seq')),
+( nextval('liczba_seq')),
+( nextval('liczba_seq'));
+
+d) alter sequence liczba_seq increment 6;
+e) select last_value, nextval('liczba_seq') from liczba_seq;
+f) drop sequence liczba_seq;
+
+
+14.
+a) select rolname from pg_roles;
+b) create user Superuser289818 superuser;
+   create user guest289818;
+   grant connect on database backup289818 to guest289818;
+   grant select on all tables in schema sklep to guest289818;
+
+c) alter user Superuser289818 rename to student;
+   alter user student with nosuperuser;
+   grant select on all tables in schema sklep to student;
+
+   drop owned by guest289818;
+   drop user guest289818;
+
+15.
+
+a) begin;
+   update produkty set cena = cena +10;
+   commit;
+
+b) -- jeszcze przed to to 
+   alter table zamowienia  DISABLE TRIGGER ALL;
+   alter table produkty  DISABLE TRIGGER ALL;
+   alter table klienci  DISABLE TRIGGER ALL;
+   alter table producenci  DISABLE TRIGGER ALL;
+
+   begin;
+   update produkty set cena = cena*1.10 where id_produktu = 3;
+   savepoint S1;
+   update zamowienia set ilosc = ilosc*1.25;
+   savepoint S2;
+   delete from klienci where id_klienta in (select zamowienia.id_klienta from klienci inner join zamowienia on zamowienia.id_klienta = klienci.id_klienta group by zamowienia.id_klienta order by zamowienia.id_klienta desc limit 1);
+   rollback to savepoint S1;
+   rollback to savepoint S2;
+   -- ERROR:  savepoint "s2" does not exist
+   rollback;
+
+c) CREATE OR REPLACE FUNCTION procentowy_udzial()
+RETURNS TABLE (procent text)
+as $$
+BEGIN
+ RETURN QUERY
+ SELECT CONCAT(nazwa_producenta, ', a jego udzial to:  ', (COUNT(id_zamowienia) / CAST((SELECT COUNT(*) FROM zamowienia) AS FLOAT))*100, ' %') FROM producenci JOIN produkty ON producenci.id_producenta = produkty.id_producenta JOIN zamowienia ON zamowienia.id_produktu = produkty.id_produktu GROUP BY (producenci.id_producenta);
+END
+$$ LANGUAGE plpgsql;
