@@ -1,0 +1,18 @@
+4. create table tableB AS select popp.* from popp, majrivers
+where popp.f_codedesc = 'Building' group by popp.gid
+having min(ST_Distance(majrivers.geom, popp.geom)) < 100000;
+
+5. create table airportsNew as select airports.name, airports.geom, airports.elev from airports;
+
+a) select name from airportsNew group by name order by min(ST_Y(geom)) desc limit 1;
+   select name from airportsNew group by name order by min(ST_Y(geom)) asc limit 1;
+   
+b) insert into airportsNew (name, geom, elev) values ('airportB', (select ST_Centroid(ST_MakeLine(
+	(select geom from airportsNew group by geom order by min(ST_Y(geom))  limit 1),
+	(select geom from airportsNew group by geom order by max(ST_Y(geom))  limit 1)))), 1.00);
+
+6. select ST_Area(ST_Buffer(ST_ShortestLine(
+ (select geom from lakes where names like 'Iliamna Lake'),
+ (select geom from airports where name like 'AMBLER')), 1000)) as pole;
+ 
+7.
